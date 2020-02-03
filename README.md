@@ -310,6 +310,19 @@ app = Starlette(middleware=[
 ])
 ```
 
+### Configuration
+
+`CSRFProtectMiddleware` accepts the following options:
+
+| Argument          | Description
+| ----------------- | -----------
+| `enabled`         | If true, enables CSRF protection. Default is True.
+| `csrf_secret`     | The CSRF token signing key.
+| `csrf_field_name` | The CSRF token's field name in the session. Defaults to "csrf_token"
+| `csrf_time_limit` | The time limit for each signed token in seconds. Defaults to 3600.
+| `csrf_headers`    | List of CSRF HTTP header field names. Defaults to ["X-CSRFToken", "X-CSRF-Token"]
+| `csrf_ssl_strict` | If enabled, ensures same origin policy on https requests. Defaults to true.
+
 ## Development
 
 ### Get the code

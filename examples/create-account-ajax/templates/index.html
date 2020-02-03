@@ -1,0 +1,65 @@
+<html>
+  <head>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+    <script>
+      var csrf_token = '{{ csrf_token(request) }}';
+
+      $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+          if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type)
+              && !this.crossDomain) {
+                xhr.setRequestHeader("X-CSRFToken", csrf_token);
+          }
+        }
+      });
+
+      $(document).ready(function() {
+        $('form').submit(function() {
+          $.ajax({
+            type: 'post',
+            url: '/create-account',
+            data: $(this).serialize(),
+            success: function(response) {
+              console.log(response);
+              alert('Success (see console for more details)');
+            },
+            error: function(response) {
+              console.log(response);
+              alert('Error (see console for more details)');
+            }
+          });
+
+          return false;  // prevent default
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <form novalidate>
+      <div>
+        <input
+            name="email"
+            type="email"
+            placeholder="Email address"
+            spellcheck="false"
+            autofocus
+        >
+      </div>
+      <div>
+        <input
+            name="password"
+            type="password"
+            placeholder="Password"
+        >
+      </div>
+      <div>
+        <input
+            name="password_confirm"
+            type="password"
+            placeholder="Confirm password"
+        >
+      </div>
+      <button type="submit">Create account</button>
+    </form>
+  </body>
+</html>

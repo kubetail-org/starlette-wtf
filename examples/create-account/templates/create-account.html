@@ -1,0 +1,30 @@
+<html>
+  <body>
+    <h1>Create Account</h1>
+    <form method="post" action="{{ url_for('create_account') }}" novalidate>
+      {{ form.csrf_token }}
+      <div>
+        {{ form.email(placeholder='Email address',
+                      autofocus='true',
+                      type='email',
+                      spellcheck='false') }}
+        {% if form.email.errors -%}
+        <span>{{ form.email.errors[0] }}</span>
+        {%- endif %}
+      </div>
+      <div>
+        {{ form.password(placeholder="Password") }}
+        {% if form.password.errors -%}
+        <span>{{ form.password.errors[0] }}</span>
+        {%- endif %}
+      </div>
+      <div>
+        {{ form.password_confirm(placeholder="Confirm password") }}
+        {% if form.password_confirm.errors -%}
+        <span>{{ form.password_confirm.errors[0] }}</span>
+        {%- endif %}
+      </div>
+      <button type="submit">Create account</button>
+    </form>
+  </body>
+</html>

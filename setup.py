@@ -17,6 +17,7 @@ setup(
     author="Andres Morey",
     description="Simple integration of Starlette and WTForms.",
     long_description=get_long_description(),
+    long_description_content_type='text/markdown',
     packages=['starlette_wtf'],
     platforms='any',
     install_requires=[

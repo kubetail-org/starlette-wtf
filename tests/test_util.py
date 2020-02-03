@@ -1,5 +1,6 @@
 import pytest
 import time
+from starlette.datastructures import Secret
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import PlainTextResponse
 from starlette.testclient import TestClient
@@ -39,7 +40,8 @@ def test_generate_csrf(make_app):
 
         return PlainTextResponse()
     
-    client.get('/')
+    response = client.get('/')
+    assert response.status_code == 200
 
 
 def test_generate_csrf_with_typeerror(make_app):
@@ -55,7 +57,8 @@ def test_generate_csrf_with_typeerror(make_app):
 
         return PlainTextResponse()
 
-    client.get('/')
+    response = client.get('/')
+    assert response.status_code == 200
     
         
 def test_validate_csrf(make_app):
@@ -152,3 +155,22 @@ def test_validation_across_clients(app):
     # client2 should accept the token
     response = client2.get('/validate', params={'csrf_token': signed_token2})
     assert response.text == 'True'
+
+
+def test_validation_with_secret_datatype(make_app):
+    app, client = make_app()
+
+    @app.route('/', methods=['GET'])
+    async def index(request):
+        kwargs = {'secret_key': Secret('yyy'), 'field_name': 'csrf_token'}
+        
+        # generate token
+        signed_token = generate_csrf(request, **kwargs)
+
+        # test valid data
+        validate_csrf(request, signed_token, **kwargs)
+
+        return PlainTextResponse()
+
+    response = client.get('/')
+    assert response.status_code == 200

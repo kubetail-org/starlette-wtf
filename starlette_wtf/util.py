@@ -40,7 +40,7 @@ import hmac
 import os
 
 from itsdangerous import BadData, SignatureExpired, URLSafeTimedSerializer
-from starlette.datastructures import ImmutableMultiDict
+from starlette.datastructures import ImmutableMultiDict, Secret
 from starlette.requests import Request as StarletteRequest
 from wtforms import ValidationError
 
@@ -82,6 +82,10 @@ def generate_csrf(request: StarletteRequest,
 
     """
     if not hasattr(request.state, field_name):
+        # handle Secret instances
+        if isinstance(secret_key, Secret):
+            secret_key = str(secret_key)
+        
         s = URLSafeTimedSerializer(secret_key, salt='wtf-csrf-token')
 
         session = request.session
@@ -131,6 +135,10 @@ def validate_csrf(request: StarletteRequest,
     if field_name not in request.session:
         raise ValidationError('The CSRF session token is missing.')
 
+    # handle Secret instances
+    if isinstance(secret_key, Secret):
+        secret_key = str(secret_key)
+    
     s = URLSafeTimedSerializer(secret_key, salt='wtf-csrf-token')
     
     try:

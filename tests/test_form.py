@@ -102,7 +102,7 @@ def test_validate(app, client, BasicForm):
     @app.route('/', methods=['GET'])
     async def index(request):
         form = await BasicForm.from_formdata(request)
-        form.validate()
+        await form.validate()
         assert 'name' in form.errors
         return PlainTextResponse()
     
@@ -119,7 +119,7 @@ def test_manual_populate_and_validate(app, client, BasicForm):
         assert form.name.data == 'value1'
 
         # validate and check value again
-        form.validate()
+        await form.validate()
         assert form.name.data == 'value1'
 
         return PlainTextResponse()
@@ -132,7 +132,7 @@ def test_validate_on_submit(app, client, BasicForm):
     async def index(request):
         form = await BasicForm.from_formdata(request)
 
-        if form.validate_on_submit():
+        if await form.validate_on_submit():
             assert request.method == 'POST'
 
         return PlainTextResponse(str('name' in form.errors))

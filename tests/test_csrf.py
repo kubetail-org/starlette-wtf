@@ -57,7 +57,7 @@ def test_wtf_form_handling_without_decorator(make_csrf_app):
     async def endpoint(request):
         form = await StarletteForm.from_formdata(request)
 
-        if form.validate_on_submit():
+        if await form.validate_on_submit():
             return PlainTextResponse('SUCCESS')
 
         # verify that the CSRF token is invalid
@@ -85,7 +85,7 @@ def test_wtf_form_handling_with_decorator(make_csrf_app, BasicForm):
     async def endpoint(request):
         form = await BasicForm.from_formdata(request)
 
-        if form.validate_on_submit():
+        if await form.validate_on_submit():
             return PlainTextResponse('SUCCESS')
 
         if request.method == 'GET':

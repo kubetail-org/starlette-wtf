@@ -11,7 +11,7 @@ def get_long_description():
 setup(
     name="Starlette-WTF",
     python_requires=">=3.6",
-    version="0.2.2",
+    version="0.3.0",
     url="https://github.com/muicss/starlette-wtf",
     license="MIT",
     author="Andres Morey",

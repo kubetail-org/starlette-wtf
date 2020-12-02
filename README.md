@@ -9,6 +9,7 @@ Starlette-WTF is a simple tool for integrating [Starlette](https://www.starlette
 - [Creating Forms](#creating-forms)
   * [The StarletteForm Class](#the-starletteform-class)
   * [Validation](#validation)
+  * [Async Custom Validators](#async-custom-validators)
 - [CSRF Protection](#csrf-protection)
   * [Setup](#setup)
   * [Protect Views](#protect-views)
@@ -86,7 +87,7 @@ async def index(request):
     """
     form = await MyForm.from_formdata(request)
     
-    if form.validate_on_submit():
+    if await form.validate_on_submit():
         return PlainTextResponse('SUCCESS')
 
     html = template.render(form=form)
@@ -152,7 +153,7 @@ async def create_account(request):
 
 ### Validation
 
-The `StarletteForm` class has a useful `.validate_on_submit()` method that performs input validation for POST, PUT, PATCH and DELETE requests and returns a boolean indicating whether or not there were any errors. After validation, errors are available via the `.errors` attribute attached to each input field instance:
+The `StarletteForm` class has a useful `.validate_on_submit()` method that performs input validation for POST, PUT, PATCH and DELETE requests and returns a boolean indicating whether or not there were any errors. After validation, errors are available via the `.errors` attribute attached to each input field instance. Note that validation is asynchronous to handle async field validators (see below):
 
 ```python
 from jinja2 import Template
@@ -212,7 +213,7 @@ async def create_account(request):
     form = await CreateAccountForm.from_formdata(request)
 
     # validate form
-    if form.validate_on_submit():
+    if await form.validate_on_submit():
         # TODO: Save account credentials before returning redirect response
         return RedirectResponse(url='/', status_code=303)
 
@@ -222,6 +223,50 @@ async def create_account(request):
     # return response
     status_code = 422 if form.errors else 200
     return HTMLResponse(html, status_code=status_code)
+```
+
+### Async Custom Validators
+
+The `StarletteForm` class allows you to implement asynchronous [WTForms-like custom validators](https://wtforms.readthedocs.io/en/stable/validators/#custom-validators) by adding `async_validate_{fieldname}` methods to your form classes:
+
+```python
+from starlette_wtf import StarletteForm
+from wtforms import TextField, PasswordField, ValidationError
+from wtforms.validators import DataRequired, Email, EqualTo
+
+
+class CreateAccountForm(StarletteForm):
+    email = TextField(
+        'Email address',
+        validators=[
+            DataRequired('Please enter your email address'),
+            Email()
+        ]
+    )
+
+    password = PasswordField(
+        'Password',
+        widget=PasswordInput(hide_value=False),
+        validators=[
+            DataRequired('Please enter your password'),
+            EqualTo('password_confirm', message='Passwords must match')
+        ]
+    )
+
+    password_confirm = PasswordField(
+        'Confirm Password',
+        widget=PasswordInput(hide_value=False),
+        validators=[
+            DataRequired('Please confirm your password')
+        ]
+    )
+
+    async def async_validate_email(self, field):
+        """Asynchronous validator to check if email is already in-use
+        """
+        # replace this with your own code
+        if await make_database_request_here():
+            raise ValidationError('Email is already in use')
 ```
 
 ## CSRF Protection

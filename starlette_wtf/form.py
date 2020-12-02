@@ -35,9 +35,12 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
+import asyncio
+import inspect
+
 from starlette.datastructures import ImmutableMultiDict
 from starlette.requests import Request as StarletteRequest
-from wtforms import Form
+from wtforms import Form, ValidationError
 from wtforms.meta import DefaultMeta
 
 from starlette_wtf.util import get_formdata
@@ -111,6 +114,53 @@ class StarletteForm(Form):
             
         # return new instance
         return cls(request, formdata=formdata, **kwargs)
+
+    
+    async def _validate_async(self, validator, field):
+        """Execute async validator
+        """
+        try:
+            await validator(self, field)
+        except ValidationError as e:
+            field.errors.append(e.args[0])
+            return False
+        return True
+
+    
+    async def validate(self, extra_validators=None):
+        """Overload :meth:`validate` to handle custom async validators
+        """
+        if extra_validators is not None:
+            extra = extra_validators.copy()
+        else:
+            extra = {}
+
+        async_validators = {}
+            
+        # use extra validators to check for StopValidation errors
+        completed = []
+        def record_status(form, field):
+            completed.append(field.name)
+        
+        for name, field in self._fields.items():
+            func = getattr(self.__class__, f"async_validate_{name}", None)
+            if func:
+                async_validators[name] = (func, field)
+                extra.setdefault(name, []).append(record_status)
+                
+        # execute non-async validators
+        success = super().validate(extra_validators=extra)
+
+        # execute async validators
+        tasks = [self._validate_async(*async_validators[name]) for name in \
+                 completed]
+        async_results = await asyncio.gather(*tasks)
+
+        # check results
+        if False in async_results:
+            success = False
+                         
+        return success
     
     
     def is_submitted(self):
@@ -120,8 +170,9 @@ class StarletteForm(Form):
         return self._request.method in SUBMIT_METHODS
     
         
-    def validate_on_submit(self):
+    async def validate_on_submit(self, extra_validators=None):
         """Call :meth:`validate` only if the form is submitted.
         This is a shortcut for ``form.is_submitted() and form.validate()``.
         """
-        return self.is_submitted() and self.validate()
+        return self.is_submitted() and \
+            await self.validate(extra_validators=extra_validators)

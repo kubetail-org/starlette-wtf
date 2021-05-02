@@ -151,8 +151,14 @@ def csrf_protect(func):
     """
     @functools.wraps(func)
     async def endpoint_wrapper(request, *args, **kwargs):
-        if not request.method in SUBMIT_METHODS:
+        async def call_method(request, *args, **kwargs):
+            cls = kwargs.pop('self', None)
+            if cls:
+                return await func(cls, request, *args, **kwargs)
             return await func(request, *args, **kwargs)
+
+        if not request.method in SUBMIT_METHODS:
+            return await call_method(request, *args, **kwargs)
         
         # get token
         signed_token = await get_csrf_token(request)
@@ -183,7 +189,7 @@ def csrf_protect(func):
         request.state.csrf_valid = True
 
         # pass on request
-        return await func(request, *args, **kwargs)
+        return await call_method(request, *args, **kwargs)
 
     return endpoint_wrapper
 

@@ -306,11 +306,11 @@ def test_class_based_views_with_decorator(make_csrf_app, BasicForm):
     app, client = make_csrf_app()
 
     # define class-based view
-    @csrf_protect
     class Endpoint(HTTPEndpoint):
         async def get(self, request):
             return PlainTextResponse('FORM')
 
+        @csrf_protect
         async def post(self, request):
             form = await BasicForm.from_formdata(request)
 

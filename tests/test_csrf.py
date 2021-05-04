@@ -1,5 +1,6 @@
 import pytest
 from starlette.applications import Starlette
+from starlette.endpoints import HTTPEndpoint
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import PlainTextResponse
@@ -267,4 +268,65 @@ def test_csrf_ssl_strict(make_csrf_app):
     response = client.post('https://testserver/endpoint',
                            headers={'REFERER': 'https://testserver:8080/'},
                            data={'csrf_token': signed_token})
+    assert response.status_code == 403
+
+
+def test_class_based_views_without_decorator(make_csrf_app):
+    app, client = make_csrf_app()
+
+    # define class-based view
+    class Endpoint(HTTPEndpoint):
+        async def post(self, request):
+            form = await StarletteForm.from_formdata(request)
+
+            if await form.validate_on_submit():
+                return PlainTextResponse('SUCCESS')
+
+            # verify that the CSRF token is invalid
+            assert form.errors['csrf_token'] == ['The CSRF token is invalid.']
+
+            return PlainTextResponse('FAIL')
+
+    # add endpoint to app
+    app.add_route("/endpoint", Endpoint)
+
+    # submit form without token
+    response = client.post('/endpoint', data={'csrf_token': 'fail'})
+    assert response.status_code == 200
+    assert response.text == 'FAIL'
+
+    # submit form with token
+    signed_token = client.get('/token').text
+    response = client.post('/endpoint', data={'csrf_token': signed_token})
+    assert response.status_code == 200
+    assert response.text == 'SUCCESS'
+
+
+def test_class_based_views_with_decorator(make_csrf_app, BasicForm):
+    app, client = make_csrf_app()
+
+    # define class-based view
+    @csrf_protect
+    class Endpoint(HTTPEndpoint):
+        async def get(self, request):
+            return PlainTextResponse('FORM')
+
+        async def post(self, request):
+            form = await BasicForm.from_formdata(request)
+
+            if await form.validate_on_submit():
+                return PlainTextResponse('SUCCESS')
+
+            return PlainTextResponse('FAIL')
+
+    # add endpoint to app
+    app.add_route("/endpoint", Endpoint)
+
+    # test get request without token
+    response = client.get('/endpoint')
+    assert response.status_code == 200
+    assert response.text == 'FORM'
+
+    # test submission without token
+    response = client.post('/endpoint', data={'mykey': 'myval'})
     assert response.status_code == 403

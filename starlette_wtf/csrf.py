@@ -42,6 +42,7 @@ from urllib.parse import urlparse
 from starlette.applications import Starlette as StarletteApplication
 from starlette.exceptions import HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 from wtforms import ValidationError
 from wtforms.csrf.core import CSRF
 
@@ -150,15 +151,15 @@ def csrf_protect(func):
     endpoint function
     """
     @functools.wraps(func)
-    async def endpoint_wrapper(request, *args, **kwargs):
-        async def call_method(request, *args, **kwargs):
-            cls = kwargs.pop('self', None)
-            if cls:
-                return await func(cls, request, *args, **kwargs)
-            return await func(request, *args, **kwargs)
+    async def endpoint_wrapper(*args, **kwargs):
+        # get request from positional arguments
+        request = args[-1]
 
+        if not isinstance(request, Request):
+            raise TypeError('must be Request, not ' + str(type(request)))
+        
         if not request.method in SUBMIT_METHODS:
-            return await call_method(request, *args, **kwargs)
+            return await func(*args, **kwargs)
         
         # get token
         signed_token = await get_csrf_token(request)
@@ -189,7 +190,7 @@ def csrf_protect(func):
         request.state.csrf_valid = True
 
         # pass on request
-        return await call_method(request, *args, **kwargs)
+        return await func(*args, **kwargs)
 
     return endpoint_wrapper
 

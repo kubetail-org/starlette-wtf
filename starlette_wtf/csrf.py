@@ -157,7 +157,7 @@ def _csrf_protect_for_function(func):
             args = (cls,) + args
 
         # get request object
-        request = next(arg for arg in list(args) + list(kwargs.values()) if isinstance(arg, Request))
+        request = next((arg for arg in list(args) + list(kwargs.values()) if isinstance(arg, Request)), None)
 
         if not request:
             raise RuntimeError("couldn't find Request instance")

@@ -37,11 +37,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 from typing import List, Optional, ByteString
 import functools
+import inspect
 from urllib.parse import urlparse
 
 from starlette.applications import Starlette as StarletteApplication
 from starlette.exceptions import HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 from wtforms import ValidationError
 from wtforms.csrf.core import CSRF
 
@@ -145,14 +147,24 @@ class CSRFError(HTTPException):
         super().__init__(status_code=403, detail=detail)
 
 
-def csrf_protect(func):
-    """Returns decorator that performs CSRF validation before calling 
-    endpoint function
+def _csrf_protect_for_function(func):
+    """Adds CSRF protection for route endpoints
     """
     @functools.wraps(func)
-    async def endpoint_wrapper(request, *args, **kwargs):
+    async def endpoint_wrapper(*args, **kwargs):
+        cls = kwargs.pop('self', None)
+        if cls:
+            args = (cls,) + args
+
+        # get request object
+        request = next(arg for arg in list(args) + list(kwargs.values()) if isinstance(arg, Request))
+
+        if not request:
+            raise RuntimeError("couldn't find Request instance")
+
+        # ignore non submit methods
         if not request.method in SUBMIT_METHODS:
-            return await func(request, *args, **kwargs)
+            return await func(*args, **kwargs)
         
         # get token
         signed_token = await get_csrf_token(request)
@@ -183,9 +195,29 @@ def csrf_protect(func):
         request.state.csrf_valid = True
 
         # pass on request
-        return await func(request, *args, **kwargs)
+        return await func(*args, **kwargs)
 
     return endpoint_wrapper
+    
+        
+def _csrf_protect_for_class(cls):
+    """Wraps user-defined methods in class
+    """
+    for name, member in inspect.getmembers(cls):
+        # wrap submission handlers
+        if name.upper() in SUBMIT_METHODS:
+            setattr(cls, name, _csrf_protect_for_function(member))
+    return cls
+
+
+def csrf_protect(arg):
+    """Returns decorator that performs CSRF validation before calling 
+    endpoint function. Can be used on HTTPEndpoint classes or un-bound route
+    functions.
+    """
+    if inspect.isclass(arg):
+        return _csrf_protect_for_class(arg)
+    return _csrf_protect_for_function(arg)
 
 
 def csrf_token(request):

@@ -292,7 +292,7 @@ app = Starlette(middleware=[
 
 ### Protect Views
 
-Once Starlette-WTF has been configured using `CSRFProtectMiddleware` you can enable CSRF protection for individual endpoints using the `@csrf_protect` decorator. The `@csrf_protect` decorator will automatically look for `csrf_token` in the form data or in the request headers (`X-CSRFToken`) and it will raise an `HTTPException` if the token is missing or invalid. Note that the `@csrf_protect` must run after `@app.route()`:
+Once Starlette-WTF has been configured using `CSRFProtectMiddleware` you can enable CSRF protection for individual endpoints using the `@csrf_protect` decorator. The `@csrf_protect` decorator will automatically look for `csrf_token` in the form data or in the request headers (`X-CSRFToken`) and it will raise an `HTTPException` if the token is missing or invalid. CSRF token validation will only be performed on submission requests (POST, PUT, PATCH, DELETE). Note that the `@csrf_protect` must run after `@app.route()`:
 
 ```python
 from starlette.responses import PlainTextResponse
@@ -306,6 +306,42 @@ async def form_handler(request):
     """
     # this code won't run unless the CSRF token has been validated
     return PlainTextResponse()
+```
+
+The `@csrf_protect` decorator can also be used with class-based views (e.g. [HTTPEndpoint](https://www.starlette.io/endpoints/)):
+```python
+from starlette.endpoints import HTTPEndpoint
+from starlette.responses import PlainTextResponse
+from starlette_wtf import csrf_protect
+
+
+@csrf_protect
+class Endpoint(HTTPEndpoint):
+    async def get(self, request):
+        # this code will run without a CSRF check
+        return PlainTextResponse()
+
+    async def post(self, request):
+        # this code won't run unless the CSRF token has been validated
+        return PlainTextResponse()
+```
+
+The `@csrf_protect` decorator can also be used with bound methods attached to class-based views:
+```python
+from starlette.endpoints import HTTPEndpoint
+from starlette.responses import PlainTextResponse
+from starlette_wtf import csrf_protect
+
+
+class Endpoint(HTTPEndpoint):
+    async def get(self, request):
+        # this code will run without a CSRF check
+        return PlainTextResponse()
+
+    @csrf_protect
+    async def post(self, request):
+        # this code won't run unless the CSRF token has been validated
+        return PlainTextResponse()
 ```
 
 ### HTML Forms

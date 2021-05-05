@@ -152,15 +152,14 @@ def _csrf_protect_for_function(func):
     """
     @functools.wraps(func)
     async def endpoint_wrapper(*args, **kwargs):
-        request = None
+        cls = kwargs.pop('self', None)
+        if cls:
+            args = (cls,) + args
 
         # get request object
-        for arg in args:
-            if isinstance(arg, Request):
-                request = arg
-                break
+        request = next(arg for arg in list(args) + list(kwargs.values()) if isinstance(arg, Request))
 
-        if request == None:
+        if not request:
             raise RuntimeError("couldn't find Request instance")
 
         # ignore non submit methods

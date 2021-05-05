@@ -147,13 +147,16 @@ class CSRFError(HTTPException):
         super().__init__(status_code=403, detail=detail)
 
 
-def _csrf_protect_for_function(func, request_pos=0):
+def _csrf_protect_for_function(func):
     """Adds CSRF protection for route endpoints
     """
     @functools.wraps(func)
     async def endpoint_wrapper(*args, **kwargs):
-        # get request argument
-        request = args[request_pos]
+        # assume if number of args is > 1 then first arg is `self`
+        if len(args) > 1:
+            request = args[1]
+        else:
+            request = args[0]
 
         # check type
         if not isinstance(request, Request):
@@ -203,7 +206,7 @@ def _csrf_protect_for_class(cls):
     for name, member in inspect.getmembers(cls):
         # wrap submission handlers
         if name.upper() in SUBMIT_METHODS:
-            setattr(cls, name, _csrf_protect_for_function(member, 1))
+            setattr(cls, name, _csrf_protect_for_function(member))
     return cls
 
 

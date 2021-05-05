@@ -358,3 +358,54 @@ def test_class_based_views_with_decorator(make_csrf_app, BasicForm):
     })
     assert response.status_code == 200
     assert response.text == 'SUCCESS'
+
+
+def test_bound_methods_with_decorator(make_csrf_app, BasicForm):
+    app, client = make_csrf_app()
+
+    # define class-based view
+    class Endpoint(HTTPEndpoint):
+        async def get(self, request):
+            return PlainTextResponse('FORM')
+
+        @csrf_protect
+        async def post(self, request):
+            form = await BasicForm.from_formdata(request)
+
+            if await form.validate_on_submit():
+                return PlainTextResponse('SUCCESS')
+
+            return PlainTextResponse('FAIL')
+
+    # add endpoint to app
+    app.add_route("/endpoint", Endpoint)
+
+    # test get request without token
+    response = client.get('/endpoint')
+    assert response.status_code == 200
+    assert response.text == 'FORM'
+
+    # test submission without token
+    response = client.post('/endpoint', data={'mykey': 'myval'})
+    assert response.status_code == 403
+
+    # test submission with incorrect token
+    response = client.post('/endpoint', data={
+        'csrf_token': 'badt0ken',
+        'mykey': 'myval'
+    })
+    assert response.status_code == 403
+
+    # test submission with token but without required field
+    signed_token = client.get('/token').text
+    response = client.post('/endpoint', data={'csrf_token': signed_token})
+    assert response.status_code == 200
+    assert response.text == 'FAIL'
+
+    # test submission with token and required field
+    response = client.post('/endpoint', data={
+        'csrf_token': signed_token,
+        'name': 'myval'
+    })
+    assert response.status_code == 200
+    assert response.text == 'SUCCESS'

@@ -51,6 +51,46 @@ def test_disabled_by_default(app, client):
     client.get('/')
 
 
+def test_enabled_false():
+    app = Starlette(middleware=[
+        Middleware(SessionMiddleware, secret_key='xxx'),
+        Middleware(CSRFProtectMiddleware, csrf_secret='yyy', enabled=False)
+    ])
+
+    @app.route('/with-decorator', methods=['POST'])
+    @csrf_protect
+    async def endpoint_with_decorator(request):
+        return PlainTextResponse('SUCCESS')
+
+    @app.route('/without-decorator', methods=['POST'])
+    async def endpoint_without_decorator(request):
+        form = await StarletteForm.from_formdata(request)
+
+        if await form.validate_on_submit():
+            return PlainTextResponse('SUCCESS')
+
+        return PlainTextResponse('FAIL')
+
+    client = TestClient(app)
+        
+    # test request with decorator
+    response = client.post('/with-decorator')
+    assert response.status_code == 200
+    assert response.text == 'SUCCESS'
+
+    # test request without decorator 1
+    response = client.post('/without-decorator')
+    assert response.status_code == 200
+    assert response.text == 'SUCCESS'
+
+    # test request without decorator 2
+    response = client.post('/without-decorator', data={
+        'csrf_token': 'badT0ken'
+    })
+    assert response.status_code == 200
+    assert response.text == 'SUCCESS'
+
+    
 def test_wtf_form_handling_without_decorator(make_csrf_app):
     app, client = make_csrf_app()
 

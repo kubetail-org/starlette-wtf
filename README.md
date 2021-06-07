@@ -374,7 +374,7 @@ When sending an AJAX request, add the `X-CSRFToken` header to allow Starlette-WT
 
 ### Disable in Unit Tests
 
-To disable CSRF protection in unit tests you can toggle the `enable` attribute in `CSRFProtectionMiddleware`:
+To disable CSRF protection in unit tests you can toggle the `enabled` attribute in `CSRFProtectionMiddleware`:
 
 ```python
 from starlette.applications import Starlette

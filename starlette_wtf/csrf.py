@@ -162,14 +162,14 @@ def _csrf_protect_for_function(func):
         if not request:
             raise RuntimeError("couldn't find Request instance")
 
-        # ignore non submit methods
-        if not request.method in SUBMIT_METHODS:
+        config = request.state.csrf_config
+        
+        # ignore non-submission methods or exit if `enabled` is False
+        if not request.method in SUBMIT_METHODS or not config['enabled']:
             return await func(*args, **kwargs)
         
         # get token
         signed_token = await get_csrf_token(request)
-
-        config = request.state.csrf_config
         
         # validate token
         try:

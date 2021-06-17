@@ -11,7 +11,7 @@ def get_long_description():
 setup(
     name="Starlette-WTF",
     python_requires=">=3.6",
-    version="0.4.2",
+    version="0.4.3-rc1",
     url="https://github.com/muicss/starlette-wtf",
     license="MIT",
     author="Andres Morey",
@@ -27,7 +27,7 @@ setup(
         'WTForms'
     ],
     extras_require={
-        'test': ['pytest', 'requests']
+        'test': ['pytest', 'requests', 'jinja2']
     },
     classifiers=[
         "Development Status :: 3 - Alpha",

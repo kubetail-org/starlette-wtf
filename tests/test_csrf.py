@@ -4,6 +4,7 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import PlainTextResponse
+from starlette.templating import Jinja2Templates
 from starlette.testclient import TestClient
 
 from starlette_wtf import (CSRFProtectMiddleware, StarletteForm, csrf_protect,
@@ -441,6 +442,52 @@ def test_bound_methods_with_decorator(make_csrf_app, BasicForm):
     response = client.post('/endpoint', data={'csrf_token': signed_token})
     assert response.status_code == 200
     assert response.text == 'FAIL'
+
+    # test submission with token and required field
+    response = client.post('/endpoint', data={
+        'csrf_token': signed_token,
+        'name': 'myval'
+    })
+    assert response.status_code == 200
+    assert response.text == 'SUCCESS'
+
+
+def test_templateresponse(make_csrf_app, BasicForm):
+    app, client = make_csrf_app()
+
+    templates = Jinja2Templates('test_templates')
+    
+    @app.route('/endpoint', methods=['GET', 'POST'])
+    @csrf_protect
+    async def endpoint(request):
+        form = await BasicForm.from_formdata(request)
+
+        if await form.validate_on_submit():
+            return PlainTextResponse('SUCCESS')
+        
+        return templates.TemplateResponse('form.html', {'request': request})
+
+    # test get request without token
+    response = client.get('/endpoint')
+    assert response.status_code == 200
+    assert response.text.startswith('<form>')
+
+    # test submission without token
+    response = client.post('/endpoint', data={'mykey': 'myval'})
+    assert response.status_code == 403
+
+    # test submission with incorrect token
+    response = client.post('/endpoint', data={
+        'csrf_token': 'badt0ken',
+        'mykey': 'myval'
+    })
+    assert response.status_code == 403
+
+    # test submission with token but without required field
+    signed_token = client.get('/token').text
+    response = client.post('/endpoint', data={'csrf_token': signed_token})
+    assert response.status_code == 200
+    assert response.text.startswith('<form>')
 
     # test submission with token and required field
     response = client.post('/endpoint', data={

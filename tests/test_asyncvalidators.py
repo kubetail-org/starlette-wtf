@@ -56,7 +56,7 @@ def test_data_required_error(app, client, FormWithAsyncValidators):
     async def index(request):
         form = await FormWithAsyncValidators.from_formdata(request)
         assert form.field1.data == 'xxx1'
-        assert form.field2.data == None
+        assert form.field2.data in ["", None]  # WTForms >= 3.0.0a1 is None
 
         # validate and check again
         success = await form.validate()

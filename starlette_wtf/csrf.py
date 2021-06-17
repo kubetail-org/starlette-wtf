@@ -35,15 +35,15 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
-from typing import List, Optional, ByteString
+from typing import Any, List, Optional, ByteString
 import functools
 import inspect
 from urllib.parse import urlparse
 
 from starlette.applications import Starlette as StarletteApplication
 from starlette.exceptions import HTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.types import ASGIApp, Receive, Scope, Send
 from wtforms import ValidationError
 from wtforms.csrf.core import CSRF
 
@@ -91,9 +91,9 @@ DEFAULT_CSRF_HEADERS = ['X-CSRFToken', 'X-CSRF-Token']
 DEFAULT_CSRF_SSL_STRICT = True
 
 
-class CSRFProtectMiddleware(BaseHTTPMiddleware):
+class CSRFProtectMiddleware:
     def __init__(self,
-                 app: StarletteApplication,
+                 app: ASGIApp,
                  enabled: bool=DEFAULT_ENABLED,
                  csrf_secret: Optional[ByteString]=DEFAULT_CSRF_SECRET,
                  csrf_field_name: str=DEFAULT_CSRF_FIELD_NAME,
@@ -103,7 +103,7 @@ class CSRFProtectMiddleware(BaseHTTPMiddleware):
         """ASGI Middleware needed by Starlette-WTF to enable CSRF protection.
         
         Args:
-          app (:class:`starlette.applications.Starlette`): The application
+          app (:class:`starlette.types.ASGIApp`): The application
               instance.
           enabled (bool, optional): Defaults to True.
           csrf_secret (str): CSRF secret key
@@ -120,6 +120,8 @@ class CSRFProtectMiddleware(BaseHTTPMiddleware):
         if enabled and not csrf_secret:
             raise RuntimeError('`csrf_secret` is required')
 
+        self.app = app
+
         self.csrf_config = {
             'enabled': enabled,
             'csrf_secret': csrf_secret,
@@ -129,15 +131,16 @@ class CSRFProtectMiddleware(BaseHTTPMiddleware):
             'csrf_headers': csrf_headers,
             'csrf_ssl_strict': csrf_ssl_strict
         }
-        
-        super().__init__(app)
 
         
-    async def dispatch(self, request, call_next):
-        """Add CSRF config to request state
-        """
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+            
+        request = Request(scope, receive)
         request.state.csrf_config = self.csrf_config
-        return await call_next(request)
+        await self.app(scope, receive, send)
 
 
 class CSRFError(HTTPException):

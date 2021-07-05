@@ -145,3 +145,55 @@ def test_validate_on_submit(app, client, BasicForm):
 
     # test is_submitted() == True and validate() == True
     assert client.post('/', data={'name': 'value'}).text == 'False'
+
+
+def test_formfield_populate_from_get_request(app, client, FormWithFormField):
+    @app.route('/', methods=['GET'])
+    async def index(request):
+        form = await FormWithFormField.from_formdata(request)
+        assert form.formfield1.data['name'] == None
+        assert form.formfield2.data['name'] == None
+        return PlainTextResponse()
+
+    client.get('/')
+
+
+def test_formfield_populate_from_post_request(app, client, FormWithFormField):
+    @app.route('/', methods=['POST'])
+    async def index(request):
+        form = await FormWithFormField.from_formdata(request)
+        assert form.formfield1.data['name'] == 'x1'
+        assert form.formfield2.data['name'] == 'x2'
+        return PlainTextResponse()
+
+    client.post('/', data={
+        'formfield1-name': 'x1',
+        'formfield2-name': 'x2'
+    })
+
+
+def test_formfield_populate_from_post_request_json(app, client, FormWithFormField):
+    @app.route('/', methods=['POST'])
+    async def index(request):
+        form = await FormWithFormField.from_formdata(request)
+        assert form.formfield1.data['name'] == 'json1'
+        assert form.formfield2.data['name'] == 'json2'
+        return PlainTextResponse()
+    
+    client.post('/',
+                data=json.dumps({
+                    'formfield1-name': 'json1',
+                    'formfield2-name': 'json2'
+                }),
+                headers={'content-type': 'application/json'})
+
+
+def test_formfield_populate_manually(app, client, FormWithFormField):
+    @app.route('/', methods=['POST'])
+    async def index(request):
+        form = FormWithFormField(request, request.query_params)
+        assert form.formfield1.data['name'] == 'args1'
+        assert form.formfield2.data['name'] == 'args2'
+        return PlainTextResponse()
+    
+    client.post('/?formfield1-name=args1&formfield2-name=args2')

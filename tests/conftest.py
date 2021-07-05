@@ -3,7 +3,7 @@ import asyncio
 import pytest
 from starlette.applications import Starlette
 from starlette.testclient import TestClient
-from wtforms import FileField, StringField, BooleanField
+from wtforms import FileField, StringField, BooleanField, Form, FormField
 from wtforms.validators import DataRequired, ValidationError
 from wtforms.widgets import CheckboxInput
 
@@ -34,6 +34,20 @@ def BasicForm():
         checkbox = BooleanField(widget=CheckboxInput(), default=True)
         
     return BasicForm
+
+
+@pytest.fixture
+def FormWithFormField(BasicForm):
+    """Return FormWithFormField class
+    """
+    class ExampleForm(Form):
+        name = StringField(validators=[DataRequired()])
+        
+    class FormWithFormField(StarletteForm):
+        formfield1 = FormField(ExampleForm)
+        formfield2 = FormField(ExampleForm)
+
+    return FormWithFormField
 
 
 @pytest.fixture

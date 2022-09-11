@@ -387,7 +387,7 @@ from starlette_wtf import CSRFProtectMiddleware
 app = Starlette(middleware=[
     Middleware(SessionMiddleware, secret_key='***REPLACEME1***'),
     Middleware(CSRFProtectMiddleware,
-               enable=!environ.get('TESTING', False),
+               enabled=not environ.get('TESTING', False),
                csrf_secret='***REPLACEME2***')
 ])
 ```

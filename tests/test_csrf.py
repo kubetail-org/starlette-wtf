@@ -479,7 +479,7 @@ def test_templateresponse(make_csrf_app, BasicForm):
         if await form.validate_on_submit():
             return PlainTextResponse('SUCCESS')
 
-        return templates.TemplateResponse('form.html', {'request': request})
+        return templates.TemplateResponse(request, 'form.html')
 
     app.add_route('/endpoint', methods=['GET', 'POST'], route=endpoint)
 

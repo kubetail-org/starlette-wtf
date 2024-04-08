@@ -26,7 +26,7 @@ Starlette-WTF is a simple tool for integrating [Starlette](https://www.starlette
 Installing Starlette-WTF is simple with [pip](https://pip.pypa.io/en/stable/):
 
 ```bash
-$ pip install starlette-wtf
+pip install starlette-wtf
 ```
 
 ## Quickstart
@@ -36,7 +36,7 @@ The following code implements a simple form handler with CSRF protection. The fo
 First, install the dependencies for this quickstart:
 
 ```bash
-$ pip install starlette starlette-wtf jinja2 uvicorn 
+pip install starlette starlette-wtf jinja2 uvicorn 
 ```
 
 Next, create a Python file (app.py) with the following code:
@@ -46,6 +46,7 @@ from jinja2 import Template
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.routing import Route
 from starlette.responses import PlainTextResponse, HTMLResponse
 from starlette_wtf import StarletteForm, CSRFProtectMiddleware, csrf_protect
 from wtforms import StringField
@@ -57,6 +58,7 @@ class MyForm(StarletteForm):
 
 
 template = Template('''
+<!doctype html>
 <html>
   <body>
     <form method="post" novalidate>
@@ -74,13 +76,6 @@ template = Template('''
 ''')
 
 
-app = Starlette(middleware=[
-    Middleware(SessionMiddleware, secret_key='***REPLACEME1***'),
-    Middleware(CSRFProtectMiddleware, csrf_secret='***REPLACEME2***')
-])
-
-
-@app.route('/', methods=['GET', 'POST'])
 @csrf_protect
 async def index(request):
     """GET|POST /: form handler
@@ -92,6 +87,17 @@ async def index(request):
 
     html = template.render(form=form)
     return HTMLResponse(html)
+
+app = Starlette(
+  routes=[
+    Route('/', methods=['GET', 'POST'], endpoint=index),
+  ],
+  middleware=[
+    Middleware(SessionMiddleware, secret_key='***REPLACEME1***'),
+    Middleware(CSRFProtectMiddleware, csrf_secret='***REPLACEME2***'),
+  ],
+)
+
 ```
     
 Finally, run the app using the following command:
@@ -108,13 +114,13 @@ Starlette-WTF provides a form class that makes it easy to add form validation an
 
 ```python
 from starlette_wtf import StarletteForm
-from wtforms import TextField, PasswordField
+from wtforms import StringField, PasswordField
 from wtforms.validators import DataRequired, Email, EqualTo
 from wtforms.widgets import PasswordInput
 
 
 class CreateAccountForm(StarletteForm):
-    email = TextField(
+    email = StringField(
         'Email address',
         validators=[
             DataRequired('Please enter your email address'),
@@ -143,7 +149,6 @@ class CreateAccountForm(StarletteForm):
 Often you will want to initialize form objects using default values on GET requests and from submitted formdata on POST requests. To make this easier you can use the `.from_formdata()` async class method which does this for you automatically:
 
 ```python
-@app.route('/create-account', methods=['GET', 'POST'])
 async def create_account(request):
     """GET|POST /create-account: Create account form handler
     """
@@ -160,9 +165,10 @@ from jinja2 import Template
 from starlette.applications import Starlette
 from starlette.responses import (PlainTextResponse, RedirectResponse,
                                  HTMLResponse)
-
+from starlette.routing import Route
 
 template = Template('''
+<!doctype html>
 <html>
   <body>
     <h1>Create Account</h1>
@@ -195,17 +201,12 @@ template = Template('''
 ''')
 
 
-app = Starlette()
-
-
-@app.route('/', methods=['GET'])
 async def index(request):
     """GET /: Return home page
     """
     return PlainTextResponse()
 
 
-@app.route('/create-account', methods=['GET', 'POST'])
 async def create_account(request):
     """GET|POST /create-account: Create account form handler
     """
@@ -223,6 +224,13 @@ async def create_account(request):
     # return response
     status_code = 422 if form.errors else 200
     return HTMLResponse(html, status_code=status_code)
+
+
+app = Starlette(routes=[
+    Route('/', methods=['GET'], endpoint=index),
+    Route('/create-account', methods=['GET', 'POST'], endpoint=create_account),
+])
+
 ```
 
 ### Async Custom Validators
@@ -292,14 +300,13 @@ app = Starlette(middleware=[
 
 ### Protect Views
 
-Once Starlette-WTF has been configured using `CSRFProtectMiddleware` you can enable CSRF protection for individual endpoints using the `@csrf_protect` decorator. The `@csrf_protect` decorator will automatically look for `csrf_token` in the form data or in the request headers (`X-CSRFToken`) and it will raise an `HTTPException` if the token is missing or invalid. CSRF token validation will only be performed on submission requests (POST, PUT, PATCH, DELETE). Note that the `@csrf_protect` must run after `@app.route()`:
+Once Starlette-WTF has been configured using `CSRFProtectMiddleware` you can enable CSRF protection for individual endpoints using the `@csrf_protect` decorator. The `@csrf_protect` decorator will automatically look for `csrf_token` in the form data or in the request headers (`X-CSRFToken`) and it will raise an `HTTPException` if the token is missing or invalid. CSRF token validation will only be performed on submission requests (POST, PUT, PATCH, DELETE):
 
 ```python
 from starlette.responses import PlainTextResponse
 from starlette_wtf import csrf_protect
 
 
-@app.route('/form-handler', methods=['GET', 'POST'])
 @csrf_protect
 async def form_handler(request):
     """GET|POST /form-handler: Form handler
@@ -412,13 +419,13 @@ app = Starlette(middleware=[
 Starlette-WTF is actively developed on GitHub. You can clone the repository using git:
 
 ```bash
-$ git clone git@github.com:muicss/starlette-wtf.git
+git clone git@github.com:muicss/starlette-wtf.git
 ```
 
 Once you have a copy of the source, you can install it into your site-packages in development mode so you can modify and execute the code:
 
 ```bash
-$ python setup.py develop
+pip install -e .
 ```
 
 ### Run unit tests
@@ -426,11 +433,11 @@ $ python setup.py develop
 To install unit test dependencies:
 
 ```bash
-$ pip install -e .[test]
+pip install -e .\[test\]
 ```
 
 To run unit tests:
 
 ```bash
-$ pytest
+pytest
 ```

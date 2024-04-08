@@ -412,13 +412,14 @@ app = Starlette(middleware=[
 Starlette-WTF is actively developed on GitHub. You can clone the repository using git:
 
 ```bash
-$ git clone git@github.com:muicss/starlette-wtf.git
+git clone git@github.com:kubetail-org/starlette-wtf.git
 ```
 
 Once you have a copy of the source, you can install it into your site-packages in development mode so you can modify and execute the code:
 
 ```bash
-$ python setup.py develop
+cd starlette-wtf
+pip install -e .
 ```
 
 ### Run unit tests
@@ -426,11 +427,11 @@ $ python setup.py develop
 To install unit test dependencies:
 
 ```bash
-$ pip install -e .[test]
+pip install -e .[test]
 ```
 
 To run unit tests:
 
 ```bash
-$ pytest
+pytest
 ```

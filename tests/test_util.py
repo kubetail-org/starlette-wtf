@@ -23,13 +23,12 @@ def make_app(app):
 def test_generate_csrf(make_app):
     app, client = make_app()
 
-    @app.route('/', methods=['GET'])
     async def index(request):
         kwargs = dict(secret_key='yyy', field_name='csrf_token')
-        
+
         # verify that state is empty
         assert hasattr(request.state, 'csrf_token') == False
-        
+
         # generate token
         signed_token = generate_csrf(request, **kwargs)
 
@@ -39,7 +38,9 @@ def test_generate_csrf(make_app):
         assert signed_token == generate_csrf(request, **kwargs)
 
         return PlainTextResponse()
-    
+
+    app.add_route('/', methods=['GET'], route=index)
+
     response = client.get('/')
     assert response.status_code == 200
 
@@ -47,7 +48,6 @@ def test_generate_csrf(make_app):
 def test_generate_csrf_with_typeerror(make_app):
     app, client = make_app()
 
-    @app.route('/', methods=['GET'])
     async def index(request):
         # seed with bad data
         request.session['y'] = 1
@@ -57,17 +57,18 @@ def test_generate_csrf_with_typeerror(make_app):
 
         return PlainTextResponse()
 
+    app.add_route('/', methods=['GET'], route=index)
+
     response = client.get('/')
     assert response.status_code == 200
-    
-        
+
+
 def test_validate_csrf(make_app):
     app, client = make_app()
 
-    @app.route('/', methods=['GET'])
     async def index(request):
         kwargs = {'secret_key': 'yyy', 'field_name': 'csrf_token'}
-        
+
         # generate token
         signed_token = generate_csrf(request, **kwargs)
 
@@ -79,8 +80,10 @@ def test_validate_csrf(make_app):
             validate_csrf(request, 'notvalid', **kwargs)
 
         assert str(excinfo.value) == 'The CSRF token is invalid.'
-        
+
         return PlainTextResponse()
+
+    app.add_route('/', methods=['GET'], route=index)
 
     client.get('/')
 
@@ -88,10 +91,9 @@ def test_validate_csrf(make_app):
 def test_validate_csrf_expired(make_app):
     app, client = make_app()
 
-    @app.route('/', methods=['GET'])
     async def index(request):
         kwargs = {'secret_key': 'yyy', 'field_name': 'csrf_token'}
-        
+
         # generate token
         signed_token = generate_csrf(request, **kwargs)
 
@@ -103,8 +105,10 @@ def test_validate_csrf_expired(make_app):
             validate_csrf(request, signed_token, time_limit=-1, **kwargs)
 
         assert str(excinfo.value) == 'The CSRF token has expired.'
-            
+
         return PlainTextResponse()
+
+    app.add_route('/', methods=['GET'], route=index)
 
     client.get('/')
 
@@ -117,13 +121,11 @@ def test_validation_across_clients(app):
 
     # make app
     kwargs = dict(secret_key='yyy', field_name='csrf_token')
-    
-    @app.route('/generate', methods=['GET'])
+
     async def generate(request):
         signed_token = generate_csrf(request, **kwargs)
         return PlainTextResponse(signed_token)
 
-    @app.route('/validate', methods=['GET'])
     async def validate(request):
         signed_token = request.query_params['csrf_token']
 
@@ -134,13 +136,16 @@ def test_validation_across_clients(app):
 
         return PlainTextResponse('True')
 
+    app.add_route('/generate', methods=['GET'], route=generate)
+    app.add_route('/validate', methods=['GET'], route=validate)
+
     # get signed token from client1
     signed_token1 = client1.get('/generate').text
 
     # client1 should accept the token
     response = client1.get('/validate', params={'csrf_token': signed_token1})
     assert response.text == 'True'
-    
+
     # client2 should reject the token
     response = client2.get('/validate', params={'csrf_token': signed_token1})
     assert response.text == 'False'
@@ -151,7 +156,7 @@ def test_validation_across_clients(app):
     # client1 should reject the token
     response = client1.get('/validate', params={'csrf_token': signed_token2})
     assert response.text == 'False'
-    
+
     # client2 should accept the token
     response = client2.get('/validate', params={'csrf_token': signed_token2})
     assert response.text == 'True'
@@ -160,10 +165,9 @@ def test_validation_across_clients(app):
 def test_validation_with_secret_datatype(make_app):
     app, client = make_app()
 
-    @app.route('/', methods=['GET'])
     async def index(request):
         kwargs = {'secret_key': Secret('yyy'), 'field_name': 'csrf_token'}
-        
+
         # generate token
         signed_token = generate_csrf(request, **kwargs)
 
@@ -171,6 +175,8 @@ def test_validation_with_secret_datatype(make_app):
         validate_csrf(request, signed_token, **kwargs)
 
         return PlainTextResponse()
+
+    app.add_route('/', methods=['GET'], route=index)
 
     response = client.get('/')
     assert response.status_code == 200

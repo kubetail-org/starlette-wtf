@@ -4,7 +4,6 @@ from starlette.responses import PlainTextResponse
 
 
 def test_async_validator_success(app, client, FormWithAsyncValidators):
-    @app.route('/', methods=['POST'])
     async def index(request):
         form = await FormWithAsyncValidators.from_formdata(request)
         assert form.field1.data == 'value1'
@@ -17,17 +16,18 @@ def test_async_validator_success(app, client, FormWithAsyncValidators):
         # check values and errors
         assert form.field1.data == 'value1'
         assert 'field1' not in form.errors
-        
+
         assert form.field2.data == 'value2'
         assert 'field2' not in form.errors
 
         return PlainTextResponse()
 
+    app.add_route('/', methods=['POST'], route=index)
+
     client.post('/', data={'field1': 'value1', 'field2': 'value2'})
 
 
 def test_async_validator_error(app, client, FormWithAsyncValidators):
-    @app.route('/', methods=['POST'])
     async def index(request):
         form = await FormWithAsyncValidators.from_formdata(request)
         assert form.field1.data == 'xxx1'
@@ -45,14 +45,15 @@ def test_async_validator_error(app, client, FormWithAsyncValidators):
 
         assert len(form.errors['field2']) == 1
         assert form.errors['field2'][0] == 'Field value is incorrect.'
-        
+
         return PlainTextResponse()
+
+    app.add_route('/', methods=['POST'], route=index)
 
     client.post('/', data={'field1': 'xxx1', 'field2': 'xxx2'})
 
 
 def test_data_required_error(app, client, FormWithAsyncValidators):
-    @app.route('/', methods=['POST'])
     async def index(request):
         form = await FormWithAsyncValidators.from_formdata(request)
         assert form.field1.data == 'xxx1'
@@ -69,14 +70,15 @@ def test_data_required_error(app, client, FormWithAsyncValidators):
 
         assert len(form.errors['field2']) == 1
         assert form.errors['field2'][0] == 'This field is required.'
-        
+
         return PlainTextResponse()
+
+    app.add_route('/', methods=['POST'], route=index)
 
     client.post('/', data={'field1': 'xxx1'})
 
 
 def test_async_validator_exception(app, client, FormWithAsyncException):
-    @app.route('/', methods=['POST'])
     async def index(request):
         form = await FormWithAsyncException.from_formdata(request)
         try:
@@ -87,5 +89,7 @@ def test_async_validator_exception(app, client, FormWithAsyncException):
             assert False
 
         return PlainTextResponse()
-        
+
+    app.add_route('/', methods=['POST'], route=index)
+
     client.post('/', data={'field1': 'xxx1', 'field2': 'xxx2'})

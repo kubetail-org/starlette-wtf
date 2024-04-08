@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from setuptools import setup, find_packages
+from setuptools import setup
 
 
 def get_long_description():
@@ -12,7 +12,7 @@ setup(
     name="Starlette-WTF",
     python_requires=">=3.6",
     version="0.4.3",
-    url="https://github.com/muicss/starlette-wtf",
+    url="https://github.com/kubetail-org/starlette-wtf",
     license="MIT",
     author="Andres Morey",
     description="Simple integration of Starlette and WTForms.",
@@ -27,7 +27,11 @@ setup(
         'WTForms'
     ],
     extras_require={
-        'test': ['pytest', 'requests', 'jinja2']
+        'test': [
+            'pytest',
+            'requests',
+            'jinja2'
+        ]
     },
     classifiers=[
         "Development Status :: 3 - Alpha",

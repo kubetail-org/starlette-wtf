@@ -103,7 +103,7 @@ app = Starlette(
 Finally, run the app using the following command:
     
 ```bash
-$ uvicorn app:app
+uvicorn app:app
 ```
 
 ## Creating Forms

@@ -53,7 +53,7 @@ def test_populate_from_post_request_json(app, client, BasicForm):
     app.add_route('/', methods=['POST'], route=index)
 
     client.post('/',
-                data=json.dumps({'name': 'json'}),
+                content=json.dumps({'name': 'json'}),
                 headers={'content-type': 'application/json'})
 
 

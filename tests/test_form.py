@@ -3,7 +3,6 @@ from io import BytesIO
 
 from starlette.datastructures import ImmutableMultiDict
 from starlette.responses import PlainTextResponse
-from wtforms.widgets import HiddenInput
 
 
 def test_populate_from_get_request(app, client, BasicForm):
@@ -155,3 +154,17 @@ def test_validate_on_submit(app, client, BasicForm):
 
     # test is_submitted() == True and validate() == True
     assert client.post('/', data={'name': 'value'}).text == 'False'
+
+
+def test_form_with_prefix(app, client, BasicForm):
+    async def index(request):
+        form = await BasicForm.from_formdata(
+            request,
+            prefix="myprefix-",
+        )
+        assert form.name.data == 'x'
+        return PlainTextResponse()
+
+    app.add_route('/', methods=['POST'], route=index)
+
+    client.post('/', data={'myprefix-name': 'x'})

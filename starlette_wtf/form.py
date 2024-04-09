@@ -140,7 +140,7 @@ class StarletteForm(Form):
         # use extra validators to check for StopValidation errors
         completed = []
         def record_status(form, field):
-            completed.append(field.name)
+            completed.append(form._prefix + field.name)
         
         for name, field in self._fields.items():
             func = getattr(self.__class__, f"async_validate_{name}", None)

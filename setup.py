@@ -12,7 +12,7 @@ setup(
     name="Starlette-WTF",
     python_requires=">=3.6",
     version="0.4.4-rc1",
-    url="https://github.com/muicss/starlette-wtf",
+    url="https://github.com/kubetail-org/starlette-wtf",
     license="MIT",
     author="Andres Morey",
     description="Simple integration of Starlette and WTForms.",
@@ -35,7 +35,7 @@ setup(
         ]
     },
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 5 - Production/Stable",
         "Environment :: Web Environment",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: BSD License",

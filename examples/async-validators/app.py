@@ -2,28 +2,26 @@ import asyncio
 
 from jinja2 import Template
 from starlette.applications import Starlette
-from starlette.responses import RedirectResponse, HTMLResponse
+from starlette.responses import HTMLResponse
 from starlette.requests import Request
-from starlette.status import (HTTP_201_CREATED, HTTP_303_SEE_OTHER,
-                              HTTP_400_BAD_REQUEST)
 from starlette_wtf import StarletteForm
-from wtforms import PasswordField, SubmitField, TextField, ValidationError
-from wtforms.validators import DataRequired, Email, EqualTo
+from wtforms import PasswordField, SubmitField, StringField, ValidationError
+from wtforms.validators import DataRequired, EqualTo
 from wtforms.widgets import PasswordInput
 
 
-async def db():    
+async def db():
     await asyncio.sleep(.5)
-    userdb = {'username':'testpwd', 'username2':'testpwd2'}
+    userdb = {'username': 'testpwd', 'username2': 'testpwd2'}
     return userdb
-    
-    
+
+
 class UserTable():
     async def get_user_by_username(self, username):
         userdb = await db()
         if username:
             return userdb[username]
-        
+
         raise Exception
 
 
@@ -39,16 +37,17 @@ async def check_username_is_taken(table: UserTable, username: str) -> bool:
     return True
 
 
-class CreateAccountForm(StarletteForm):    
-    username = TextField(
+class CreateAccountForm(StarletteForm):
+    username = StringField(
         'Username',
         validators=[DataRequired('Please provide username')]
     )
-    
+
     password = PasswordField(
         'Password',
         widget=PasswordInput(hide_value=False),
-        validators=[DataRequired('Please enter your password'), EqualTo('password_confirm', message='Passwords must match')]
+        validators=[DataRequired('Please enter your password'), EqualTo(
+            'password_confirm', message='Passwords must match')]
     )
 
     password_confirm = PasswordField(
@@ -59,8 +58,7 @@ class CreateAccountForm(StarletteForm):
 
     submit = SubmitField('Join Now')
 
-
-    async def async_validate_username(self, username, user_table: UserTable=get_repo):        
+    async def async_validate_username(self, username, user_table: UserTable = get_repo):
         if await check_username_is_taken(user_table, username.data):
             raise ValidationError('Please use a different username.')
 
@@ -107,6 +105,6 @@ async def index(request: Request):
 
     if await form.validate_on_submit():
         print('writing to db')
-    
+
     html = template.render(form=form)
     return HTMLResponse(html)

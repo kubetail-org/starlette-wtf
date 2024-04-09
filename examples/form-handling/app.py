@@ -34,7 +34,7 @@ app = Starlette()
 async def index(request):
     form = await MyForm.from_formdata(request)
     
-    if form.validate_on_submit():
+    if await form.validate_on_submit():
         return PlainTextResponse('SUCCESS')
 
     html = template.render(form=form)

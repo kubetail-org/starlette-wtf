@@ -11,7 +11,7 @@ def get_long_description():
 setup(
     name="Starlette-WTF",
     python_requires=">=3.6",
-    version="0.4.4-rc1",
+    version="0.4.4",
     url="https://github.com/kubetail-org/starlette-wtf",
     license="MIT",
     author="Andres Morey",

@@ -95,7 +95,7 @@ class CSRFProtectMiddleware:
     def __init__(self,
                  app: ASGIApp,
                  enabled: bool=DEFAULT_ENABLED,
-                 csrf_secret: Optional[ByteString]=DEFAULT_CSRF_SECRET,
+                 csrf_secret: Optional[str]=DEFAULT_CSRF_SECRET,
                  csrf_field_name: str=DEFAULT_CSRF_FIELD_NAME,
                  csrf_time_limit: int=DEFAULT_CSRF_TIME_LIMIT,
                  csrf_headers: List[str]=DEFAULT_CSRF_HEADERS,

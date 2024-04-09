@@ -4,7 +4,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import RedirectResponse
 from starlette.templating import Jinja2Templates
 from starlette_wtf import StarletteForm, CSRFProtectMiddleware, csrf_protect
-from wtforms import TextField, PasswordField
+from wtforms import StringField, PasswordField
 from wtforms.validators import DataRequired, Email, EqualTo
 from wtforms.widgets import PasswordInput
 
@@ -15,7 +15,7 @@ templates = Jinja2Templates('templates')
 class CreateAccountForm(StarletteForm):
     """Create account form
     """
-    email = TextField(
+    email = StringField(
         'Email address',
         validators=[
             DataRequired('Please enter your email address'),
@@ -63,7 +63,7 @@ async def create_account(request):
     form = await CreateAccountForm.from_formdata(request)
 
     # validate form
-    if form.validate_on_submit():
+    if await form.validate_on_submit():
         # TODO: Save account credentials before returning redirect response
         return RedirectResponse(url='/', status_code=303)
         

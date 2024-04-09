@@ -5,7 +5,7 @@ from starlette.responses import JSONResponse
 from starlette.templating import Jinja2Templates
 from starlette_wtf import (StarletteForm, CSRFProtectMiddleware, csrf_protect,
                            csrf_token)
-from wtforms import TextField, PasswordField
+from wtforms import StringField, PasswordField
 from wtforms.validators import DataRequired, Email, EqualTo
 from wtforms.widgets import PasswordInput
 
@@ -17,7 +17,7 @@ templates.env.globals.update({'csrf_token': csrf_token})
 class CreateAccountForm(StarletteForm):
     """Create account form
     """
-    email = TextField(
+    email = StringField(
         'Email address',
         validators=[
             DataRequired('Please enter your email address'),
@@ -55,7 +55,7 @@ async def index(request):
     """
     return templates.TemplateResponse('/index.html', {'request': request})
 
-    
+
 @app.route('/create-account', methods=['POST'])
 @csrf_protect
 async def create_account(request):
@@ -65,7 +65,7 @@ async def create_account(request):
     form = await CreateAccountForm.from_formdata(request)
 
     # validate form
-    if form.validate_on_submit():
+    if await form.validate_on_submit():
         # TODO: Save account credentials before returning redirect response
         return JSONResponse({'status': 'success'})
 
@@ -73,5 +73,5 @@ async def create_account(request):
         'status': 'error',
         'errors': form.errors
     }
-    
+
     return JSONResponse(json, status_code=422)

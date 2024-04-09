@@ -4,6 +4,7 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import PlainTextResponse
+from starlette.routing import Route
 from starlette.templating import Jinja2Templates
 from starlette.testclient import TestClient
 
@@ -14,27 +15,31 @@ from starlette_wtf import (CSRFProtectMiddleware, StarletteForm, csrf_protect,
 @pytest.fixture
 def make_csrf_app(app):
     def _make_csrf_app(**options):
-        app = Starlette(middleware=[
-            Middleware(SessionMiddleware, secret_key='xxx'),
-            Middleware(CSRFProtectMiddleware, csrf_secret='yyy', **options)
-        ])
-
-        @app.route('/', methods=['GET', 'POST'])
         async def index(request):
             return PlainTextResponse()
 
-        @app.route('/token', methods=['GET'])
         async def token(request):
             token = csrf_token(request)
             return PlainTextResponse(token)
 
-        @app.route('/new-token', methods=['GET'])
         async def new_token(request):
             if 'csrf_token' in request.session:
                 request.session.pop('csrf_token')
             token = csrf_token(request)
             return PlainTextResponse(token)
-        
+
+        app = Starlette(
+            routes=[
+                Route('/', methods=['GET', 'POST'], endpoint=index),
+                Route('/token', methods=['GET'], endpoint=token),
+                Route('/new-token', methods=['GET'], endpoint=new_token),
+            ],
+            middleware=[
+                Middleware(SessionMiddleware, secret_key='xxx'),
+                Middleware(CSRFProtectMiddleware, csrf_secret='yyy', **options),
+            ],
+        )
+
         client = TestClient(app)
 
         return app, client
@@ -43,11 +48,12 @@ def make_csrf_app(app):
 
 
 def test_disabled_by_default(app, client):
-    @app.route('/', methods=['GET'])
     async def index(request):
         form = StarletteForm(request)
         assert hasattr(form, 'csrf_token') == False
         return PlainTextResponse()
+
+    app.add_route('/', methods=['GET'], route=index)
 
     client.get('/')
 
@@ -58,12 +64,10 @@ def test_enabled_false():
         Middleware(CSRFProtectMiddleware, csrf_secret='yyy', enabled=False)
     ])
 
-    @app.route('/with-decorator', methods=['POST'])
     @csrf_protect
     async def endpoint_with_decorator(request):
         return PlainTextResponse('SUCCESS')
 
-    @app.route('/without-decorator', methods=['POST'])
     async def endpoint_without_decorator(request):
         form = await StarletteForm.from_formdata(request)
 
@@ -71,6 +75,9 @@ def test_enabled_false():
             return PlainTextResponse('SUCCESS')
 
         return PlainTextResponse('FAIL')
+
+    app.add_route('/with-decorator', methods=['POST'], route=endpoint_with_decorator)
+    app.add_route('/without-decorator', methods=['POST'], route=endpoint_without_decorator)
 
     client = TestClient(app)
         
@@ -95,7 +102,6 @@ def test_enabled_false():
 def test_wtf_form_handling_without_decorator(make_csrf_app):
     app, client = make_csrf_app()
 
-    @app.route('/endpoint', methods=['POST'])
     async def endpoint(request):
         form = await StarletteForm.from_formdata(request)
 
@@ -106,6 +112,8 @@ def test_wtf_form_handling_without_decorator(make_csrf_app):
         assert form.errors['csrf_token'] == ['The CSRF token is invalid.']
         
         return PlainTextResponse('FAIL')
+
+    app.add_route('/endpoint', methods=['POST'], route=endpoint)
 
     # submit form without token
     response = client.post('/endpoint', data={'csrf_token': 'fail'})
@@ -122,7 +130,6 @@ def test_wtf_form_handling_without_decorator(make_csrf_app):
 def test_wtf_form_handling_with_decorator(make_csrf_app, BasicForm):
     app, client = make_csrf_app()
 
-    @app.route('/endpoint', methods=['GET', 'POST'])
     @csrf_protect
     async def endpoint(request):
         form = await BasicForm.from_formdata(request)
@@ -136,6 +143,8 @@ def test_wtf_form_handling_with_decorator(make_csrf_app, BasicForm):
             text = 'FAIL'
             
         return PlainTextResponse(text)
+
+    app.add_route('/endpoint', methods=['GET', 'POST'], route=endpoint)
 
     # test get request without token
     response = client.get('/endpoint')
@@ -171,12 +180,13 @@ def test_wtf_form_handling_with_decorator(make_csrf_app, BasicForm):
 def test_raw_form_handling_with_decorator(make_csrf_app):
     app, client = make_csrf_app()
     
-    @app.route('/endpoint', methods=['POST'])
     @csrf_protect
     async def endpoint(request):
         formdata = await request.form()
         assert formdata.get('mykey') == 'myval'
         return PlainTextResponse()
+
+    app.add_route('/endpoint', methods=['POST'], route=endpoint)
 
     # test request without token
     response = client.post('/endpoint', data={'mykey': 'myval'})
@@ -194,11 +204,12 @@ def test_raw_form_handling_with_decorator(make_csrf_app):
 def test_csrf_validation_with_decorator(make_csrf_app):
     app, client = make_csrf_app()
     
-    @app.route('/endpoint', methods=['GET', 'POST'])
     @csrf_protect
     async def endpoint(request):
         return PlainTextResponse('SUCCESS')
-    
+
+    app.add_route('/endpoint', methods=['GET', 'POST'], route=endpoint)
+
     # test that initial request doesn't have a session token
     response = client.post('/endpoint', data={'csrf_token': 'badtoken'})
     assert response.status_code == 403
@@ -230,12 +241,13 @@ def test_csrf_validation_with_decorator(make_csrf_app):
 def test_csrf_valid_flag(make_csrf_app):
     app, client = make_csrf_app()
 
-    @app.route('/endpoint', methods=['POST'])
     @csrf_protect
     async def endpoint(request):
         if request.method == 'POST':
             assert hasattr(request.state, 'csrf_valid') == True
         return PlainTextResponse()
+
+    app.add_route('/endpoint', methods=['POST'], route=endpoint)
 
     # get token and execute POST
     signed_token = client.get('/token').text
@@ -245,10 +257,11 @@ def test_csrf_valid_flag(make_csrf_app):
 def test_method_not_allowed(make_csrf_app):
     app, client = make_csrf_app()
 
-    @app.route('/endpoint', methods=['POST'])
     @csrf_protect
     async def endpoint(request):
         return PlainTextResponse()
+
+    app.add_route('/endpoint', methods=['POST'], route=endpoint)
 
     # test request with unexpected method
     response = client.get('/endpoint')
@@ -258,10 +271,11 @@ def test_method_not_allowed(make_csrf_app):
 def test_csrf_headers(make_csrf_app):
     app, client = make_csrf_app()
 
-    @app.route('/endpoint', methods=['POST'])
     @csrf_protect
     async def endpoint(request):
         return PlainTextResponse()
+
+    app.add_route('/endpoint', methods=['POST'], route=endpoint)
 
     signed_token = client.get('/token').text
 
@@ -285,12 +299,13 @@ def test_csrf_headers(make_csrf_app):
 def test_csrf_ssl_strict(make_csrf_app):
     app, client = make_csrf_app()
 
-    @app.route('/endpoint', methods=['POST'])
     @csrf_protect
     async def endpoint(request):
         assert request.url.scheme == 'https'
         assert request.headers['REFERER'] == 'https://testserver/'
         return PlainTextResponse()
+
+    app.add_route('/endpoint', methods=['POST'], route=endpoint)
 
     signed_token = client.get('/token').text
 
@@ -457,7 +472,6 @@ def test_templateresponse(make_csrf_app, BasicForm):
 
     templates = Jinja2Templates('test_templates')
     
-    @app.route('/endpoint', methods=['GET', 'POST'])
     @csrf_protect
     async def endpoint(request):
         form = await BasicForm.from_formdata(request)
@@ -465,7 +479,9 @@ def test_templateresponse(make_csrf_app, BasicForm):
         if await form.validate_on_submit():
             return PlainTextResponse('SUCCESS')
         
-        return templates.TemplateResponse('form.html', {'request': request})
+        return templates.TemplateResponse(request, 'form.html')
+
+    app.add_route('/endpoint', methods=['GET', 'POST'], route=endpoint)
 
     # test get request without token
     response = client.get('/endpoint')

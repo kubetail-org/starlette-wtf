@@ -11,8 +11,8 @@ def get_long_description():
 setup(
     name="Starlette-WTF",
     python_requires=">=3.6",
-    version="0.4.3",
-    url="https://github.com/muicss/starlette-wtf",
+    version="0.4.4",
+    url="https://github.com/kubetail-org/starlette-wtf",
     license="MIT",
     author="Andres Morey",
     description="Simple integration of Starlette and WTForms.",
@@ -27,10 +27,15 @@ setup(
         'WTForms'
     ],
     extras_require={
-        'test': ['pytest', 'requests', 'jinja2']
+        'test': [
+            'httpx',
+            'jinja2',
+            'pytest',
+            'requests',
+        ]
     },
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 5 - Production/Stable",
         "Environment :: Web Environment",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: BSD License",

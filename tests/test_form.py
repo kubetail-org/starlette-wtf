@@ -3,11 +3,9 @@ from io import BytesIO
 
 from starlette.datastructures import ImmutableMultiDict
 from starlette.responses import PlainTextResponse
-from wtforms.widgets import HiddenInput
 
 
 def test_populate_from_get_request(app, client, BasicForm):
-    @app.route('/', methods=['GET'])
     async def index(request):
         form = await BasicForm.from_formdata(request)
         assert form.name.data == None
@@ -15,26 +13,30 @@ def test_populate_from_get_request(app, client, BasicForm):
         assert form.checkbox.data == True
         return PlainTextResponse()
 
+    app.add_route('/', methods=['GET'], route=index)
+
     client.get('/')
 
         
 def test_populate_from_post_request_form(app, client, BasicForm):
-    @app.route('/', methods=['POST'])
     async def index(request):
         form = await BasicForm.from_formdata(request)
         assert form.name.data == 'x'
         return PlainTextResponse()
 
+    app.add_route('/', methods=['POST'], route=index)
+
     client.post('/', data={'name': 'x'})
 
 
 def test_populate_from_post_request_files(app, client, BasicForm):
-    @app.route('/', methods=['POST'])
     async def index(request):
         form = await BasicForm.from_formdata(request)
         assert form.avatar.data is not None
         assert form.avatar.data.filename == 'starlette.png'
         return PlainTextResponse()
+
+    app.add_route('/', methods=['POST'], route=index)
 
     f = BytesIO()
     f.name = 'starlette.png'
@@ -42,54 +44,58 @@ def test_populate_from_post_request_files(app, client, BasicForm):
 
 
 def test_populate_from_post_request_json(app, client, BasicForm):
-    @app.route('/', methods=['POST'])
     async def index(request):
         form = await BasicForm.from_formdata(request)
         assert form.name.data == 'json'
         return PlainTextResponse()
-    
+
+    app.add_route('/', methods=['POST'], route=index)
+
     client.post('/',
-                data=json.dumps({'name': 'json'}),
+                content=json.dumps({'name': 'json'}),
                 headers={'content-type': 'application/json'})
 
 
 def test_populate_manually(app, client, BasicForm):
-    @app.route('/', methods=['POST'])
     async def index(request):
         form = BasicForm(request, request.query_params)
         assert form.name.data == 'args'
         return PlainTextResponse()
-    
+
+    app.add_route('/', methods=['POST'], route=index)
+
     client.post('/?name=args')
 
 
-
 def test_populate_missing(app, client, BasicForm):
-    @app.route('/', methods=['POST'])
     async def index(request):
         form = BasicForm(request)
         assert form.name.data is None
         return PlainTextResponse()
 
+    app.add_route('/', methods=['POST'], route=index)
+
     client.post('/', data={'name': 'ignore'})
 
 
 def test_populate_after_init(app, client, BasicForm):
-    @app.route('/', methods=['POST'])
     async def index(request):
         form = BasicForm(request)
         form.process(formdata=await request.form())
         assert form.name.data == 'x'
         return PlainTextResponse()
 
+    app.add_route('/', methods=['POST'], route=index)
+
     client.post('/', data={'name': 'x'})
     
 
 def test_is_submitted(app, client, BasicForm):
-    @app.route('/', methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
     async def index(request):
         form = await BasicForm.from_formdata(request)
         return PlainTextResponse(str(form.is_submitted()))
+
+    app.add_route('/', methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], route=index)
 
     assert client.get('/').text == 'False'
     assert client.post('/').text == 'True'
@@ -99,18 +105,18 @@ def test_is_submitted(app, client, BasicForm):
     
 
 def test_validate(app, client, BasicForm):
-    @app.route('/', methods=['GET'])
     async def index(request):
         form = await BasicForm.from_formdata(request)
         await form.validate()
         assert 'name' in form.errors
         return PlainTextResponse()
-    
+
+    app.add_route('/', methods=['GET'], route=index)
+
     client.get('/')
 
 
 def test_manual_populate_and_validate(app, client, BasicForm):
-    @app.route('/', methods=['POST'])
     async def index(request):
         formdata = ImmutableMultiDict({'name': 'value1'})
 
@@ -124,11 +130,12 @@ def test_manual_populate_and_validate(app, client, BasicForm):
 
         return PlainTextResponse()
 
+    app.add_route('/', methods=['POST'], route=index)
+
     client.post('/', data={'name': 'value0'})
 
 
 def test_validate_on_submit(app, client, BasicForm):
-    @app.route('/', methods=['GET', 'POST'])
     async def index(request):
         form = await BasicForm.from_formdata(request)
 
@@ -136,6 +143,8 @@ def test_validate_on_submit(app, client, BasicForm):
             assert request.method == 'POST'
 
         return PlainTextResponse(str('name' in form.errors))
+
+    app.add_route('/', methods=['GET', 'POST'], route=index)
 
     # test is_submitted() == False
     assert client.get('/').text == 'False'
@@ -145,3 +154,17 @@ def test_validate_on_submit(app, client, BasicForm):
 
     # test is_submitted() == True and validate() == True
     assert client.post('/', data={'name': 'value'}).text == 'False'
+
+
+def test_form_with_prefix(app, client, BasicForm):
+    async def index(request):
+        form = await BasicForm.from_formdata(
+            request,
+            prefix="myprefix-",
+        )
+        assert form.name.data == 'x'
+        return PlainTextResponse()
+
+    app.add_route('/', methods=['POST'], route=index)
+
+    client.post('/', data={'myprefix-name': 'x'})

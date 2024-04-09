@@ -2,7 +2,6 @@ from starlette.responses import PlainTextResponse
 
 
 def test_custom_validator_success(app, client, FormWithCustomValidators):
-    @app.route('/', methods=['POST'])
     async def index(request):
         form = await FormWithCustomValidators.from_formdata(request)
         assert form.field1.data == 'value1'
@@ -21,11 +20,12 @@ def test_custom_validator_success(app, client, FormWithCustomValidators):
 
         return PlainTextResponse()
 
+    app.add_route('/', methods=['POST'], route=index)
+
     client.post('/', data={'field1': 'value1', 'field2': 'value2'})
 
 
 def test_custom_validator_failure(app, client, FormWithCustomValidators):
-    @app.route('/', methods=['POST'])
     async def index(request):
         form = await FormWithCustomValidators.from_formdata(request)
         assert form.field1.data == 'xxx1'
@@ -42,5 +42,7 @@ def test_custom_validator_failure(app, client, FormWithCustomValidators):
         assert 'field2' in form.errors
 
         return PlainTextResponse()
+
+    app.add_route('/', methods=['POST'], route=index)
 
     client.post('/', data={'field1': 'xxx1', 'field2': 'xxx2'})

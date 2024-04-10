@@ -73,7 +73,7 @@ class StarletteForm(Form):
         """
         # cache request
         self._request = request
-        
+
         # for WTForms CSRF handling
         if hasattr(request.state, 'csrf_config'):
             config = request.state.csrf_config
@@ -88,7 +88,6 @@ class StarletteForm(Form):
 
         super().__init__(*args, **kwargs)
 
-        
     @classmethod
     async def from_formdata(cls, request: StarletteRequest, formdata=_Auto,
                             **kwargs):
@@ -111,11 +110,10 @@ class StarletteForm(Form):
                 formdata = await get_formdata(request)
             else:
                 formdata = None
-            
+
         # return new instance
         return cls(request, formdata=formdata, **kwargs)
 
-    
     async def _validate_async(self, validator, field):
         """Execute async validator
         """
@@ -126,7 +124,6 @@ class StarletteForm(Form):
             return False
         return True
 
-    
     async def validate(self, extra_validators=None):
         """Overload :meth:`validate` to handle custom async validators
         """
@@ -136,40 +133,39 @@ class StarletteForm(Form):
             extra = {}
 
         async_validators = {}
-            
+
         # use extra validators to check for StopValidation errors
         completed = []
-        def record_status(form, field):
-            completed.append(form._prefix + field.name)
-        
+
+        def record_status(_, field):
+            completed.append(field.name)
+
         for name, field in self._fields.items():
             func = getattr(self.__class__, f"async_validate_{name}", None)
             if func:
-                async_validators[name] = (func, field)
+                async_validators[field.name] = (func, field)
                 extra.setdefault(name, []).append(record_status)
-                
+
         # execute non-async validators
         success = super().validate(extra_validators=extra)
 
         # execute async validators
-        tasks = [self._validate_async(*async_validators[name]) for name in \
+        tasks = [self._validate_async(*async_validators[field_name]) for field_name in
                  completed]
         async_results = await asyncio.gather(*tasks)
 
         # check results
         if False in async_results:
             success = False
-                         
+
         return success
-    
-    
+
     def is_submitted(self):
         """Consider the form submitted if there is an active request and
         the method is ``POST``, ``PUT``, ``PATCH``, or ``DELETE``.
         """
         return self._request.method in SUBMIT_METHODS
-    
-        
+
     async def validate_on_submit(self, extra_validators=None):
         """Call :meth:`validate` only if the form is submitted.
         This is a shortcut for ``form.is_submitted() and form.validate()``.

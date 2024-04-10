@@ -156,15 +156,21 @@ def test_validate_on_submit(app, client, BasicForm):
     assert client.post('/', data={'name': 'value'}).text == 'False'
 
 
-def test_form_with_prefix(app, client, BasicForm):
+def test_validate_form_with_prefix(app, client, BasicForm):
     async def index(request):
         form = await BasicForm.from_formdata(
             request,
             prefix="myprefix-",
         )
-        assert form.name.data == 'x'
-        return PlainTextResponse()
 
-    app.add_route('/', methods=['POST'], route=index)
+        if await form.validate_on_submit():
+            assert request.method == 'POST'
 
-    client.post('/', data={'myprefix-name': 'x'})
+        return PlainTextResponse(str('name' in form.errors))
+
+    app.add_route('/', methods=['GET', 'POST'], route=index)
+
+    assert client.get('/').text == 'False'
+    assert client.post('/').text == 'True'
+    assert client.post('/', data={'name': 'value'}).text == 'True'
+    assert client.post('/', data={'myprefix-name': 'value'}).text == 'False'
